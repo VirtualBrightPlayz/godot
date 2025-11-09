@@ -1768,7 +1768,7 @@ void fragment_shader(in SceneData scene_data) {
 				vec3 l1 = (l1_r + l1_g + l1_b) / 3.0;
 				vec3 lightmap_direction = normalize(l1);
 
-				vec3 L_view = hvec3(mat3(scene_data.view_matrix) * lightmap_direction);
+				vec3 L_view = hvec3(inverse(lightmaps.data[ofs].normal_xform) * lightmap_direction);
 
 				vec3 f0 = F0(metallic, specular, albedo);
 
