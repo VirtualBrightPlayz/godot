@@ -60,6 +60,14 @@ private:
 	TypedArray<TextureLayered> storage_light_textures;
 	TypedArray<TextureLayered> storage_shadowmask_textures;
 
+	// External image paths and slice counts for non-editor (exported) lightmaps
+	PackedStringArray light_texture_img_paths;
+	PackedInt32Array light_texture_slice_counts;
+	PackedStringArray shadowmask_texture_img_paths;
+	PackedInt32Array shadowmask_texture_slice_counts;
+
+	void _load_textures_from_image_paths(const PackedStringArray &p_paths, const PackedInt32Array &p_slice_counts, TypedArray<TextureLayered> &r_textures);
+
 	bool uses_spherical_harmonics = false;
 	bool interior = false;
 
@@ -89,6 +97,7 @@ private:
 
 protected:
 	static void _bind_methods();
+	void _validate_property(PropertyInfo &p_property) const;
 
 public:
 	void add_user(const NodePath &p_path, const Rect2 &p_uv_scale, int p_slice_index, int32_t p_sub_instance = -1);
@@ -137,6 +146,16 @@ public:
 	TypedArray<TextureLayered> get_shadowmask_textures() const;
 	void clear_shadowmask_textures();
 	bool has_shadowmask_textures();
+
+	void set_light_texture_img_paths(const PackedStringArray &p_paths);
+	PackedStringArray get_light_texture_img_paths() const;
+	void set_light_texture_slice_counts(const PackedInt32Array &p_counts);
+	PackedInt32Array get_light_texture_slice_counts() const;
+
+	void set_shadowmask_texture_img_paths(const PackedStringArray &p_paths);
+	PackedStringArray get_shadowmask_texture_img_paths() const;
+	void set_shadowmask_texture_slice_counts(const PackedInt32Array &p_counts);
+	PackedInt32Array get_shadowmask_texture_slice_counts() const;
 
 	virtual RID get_rid() const override;
 	LightmapGIData();
@@ -270,7 +289,7 @@ private:
 	void _plot_triangle_into_octree(GenProbesOctree *p_cell, float p_cell_size, const Vector3 *p_triangle);
 	void _gen_new_positions_from_octree(const GenProbesOctree *p_cell, float p_cell_size, const Vector<Vector3> &probe_positions, LocalVector<Vector3> &new_probe_positions, HashMap<Vector3i, bool> &positions_used, const AABB &p_bounds);
 
-	BakeError _save_and_reimport_atlas_textures(const Ref<Lightmapper> p_lightmapper, const String &p_base_name, TypedArray<TextureLayered> &r_textures, bool p_is_shadowmask = false) const;
+	BakeError _save_and_reimport_atlas_textures(const Ref<Lightmapper> p_lightmapper, const String &p_base_name, TypedArray<TextureLayered> &r_textures, PackedStringArray &r_img_paths, PackedInt32Array &r_slice_counts, bool p_is_shadowmask = false) const;
 
 protected:
 	void _validate_property(PropertyInfo &p_property) const;

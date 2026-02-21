@@ -179,6 +179,96 @@ bool LightmapGIData::has_shadowmask_textures() {
 	return !storage_shadowmask_textures.is_empty() && combined_shadowmask_texture.is_valid();
 }
 
+void LightmapGIData::_load_textures_from_image_paths(const PackedStringArray &p_paths, const PackedInt32Array &p_slice_counts, TypedArray<TextureLayered> &r_textures) {
+	r_textures.clear();
+	ERR_FAIL_COND(p_paths.size() != p_slice_counts.size());
+
+	for (int i = 0; i < p_paths.size(); i++) {
+		const String &img_path = p_paths[i];
+		const int slice_count = p_slice_counts[i];
+
+		Ref<Image> loaded_image = Image::load_from_file(img_path);
+		if (loaded_image.is_null()) {
+			WARN_PRINT(vformat("Failed to load lightmap image from '%s'.", img_path));
+			continue;
+		}
+
+		const int slice_height = loaded_image->get_height() / slice_count;
+		Vector<Ref<Image>> slice_images;
+		slice_images.resize(slice_count);
+		for (int j = 0; j < slice_count; j++) {
+			slice_images.write[j] = loaded_image->get_region(Rect2i(0, slice_height * j, loaded_image->get_width(), slice_height));
+		}
+
+		Ref<Texture2DArray> texs;
+		texs.instantiate();
+		texs->create_from_images(slice_images);
+		r_textures.push_back(texs);
+	}
+}
+
+void LightmapGIData::set_light_texture_img_paths(const PackedStringArray &p_paths) {
+	light_texture_img_paths = p_paths;
+	if (!light_texture_img_paths.is_empty() && !light_texture_slice_counts.is_empty()) {
+		TypedArray<TextureLayered> textures;
+		_load_textures_from_image_paths(light_texture_img_paths, light_texture_slice_counts, textures);
+		set_lightmap_textures(textures);
+	}
+}
+
+PackedStringArray LightmapGIData::get_light_texture_img_paths() const {
+	return light_texture_img_paths;
+}
+
+void LightmapGIData::set_light_texture_slice_counts(const PackedInt32Array &p_counts) {
+	light_texture_slice_counts = p_counts;
+	if (!light_texture_img_paths.is_empty() && !light_texture_slice_counts.is_empty()) {
+		TypedArray<TextureLayered> textures;
+		_load_textures_from_image_paths(light_texture_img_paths, light_texture_slice_counts, textures);
+		set_lightmap_textures(textures);
+	}
+}
+
+PackedInt32Array LightmapGIData::get_light_texture_slice_counts() const {
+	return light_texture_slice_counts;
+}
+
+void LightmapGIData::set_shadowmask_texture_img_paths(const PackedStringArray &p_paths) {
+	shadowmask_texture_img_paths = p_paths;
+	if (!shadowmask_texture_img_paths.is_empty() && !shadowmask_texture_slice_counts.is_empty()) {
+		TypedArray<TextureLayered> textures;
+		_load_textures_from_image_paths(shadowmask_texture_img_paths, shadowmask_texture_slice_counts, textures);
+		set_shadowmask_textures(textures);
+	}
+}
+
+PackedStringArray LightmapGIData::get_shadowmask_texture_img_paths() const {
+	return shadowmask_texture_img_paths;
+}
+
+void LightmapGIData::set_shadowmask_texture_slice_counts(const PackedInt32Array &p_counts) {
+	shadowmask_texture_slice_counts = p_counts;
+	if (!shadowmask_texture_img_paths.is_empty() && !shadowmask_texture_slice_counts.is_empty()) {
+		TypedArray<TextureLayered> textures;
+		_load_textures_from_image_paths(shadowmask_texture_img_paths, shadowmask_texture_slice_counts, textures);
+		set_shadowmask_textures(textures);
+	}
+}
+
+PackedInt32Array LightmapGIData::get_shadowmask_texture_slice_counts() const {
+	return shadowmask_texture_slice_counts;
+}
+
+void LightmapGIData::_validate_property(PropertyInfo &p_property) const {
+	// When external image paths are set, do not serialize textures
+	if (p_property.name == "lightmap_textures" && !light_texture_img_paths.is_empty()) {
+		p_property.usage &= ~PROPERTY_USAGE_STORAGE;
+	}
+	if (p_property.name == "shadowmask_textures" && !shadowmask_texture_img_paths.is_empty()) {
+		p_property.usage &= ~PROPERTY_USAGE_STORAGE;
+	}
+}
+
 RID LightmapGIData::get_rid() const {
 	return lightmap;
 }
@@ -334,6 +424,15 @@ void LightmapGIData::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_shadowmask_textures", "shadowmask_textures"), &LightmapGIData::set_shadowmask_textures);
 	ClassDB::bind_method(D_METHOD("get_shadowmask_textures"), &LightmapGIData::get_shadowmask_textures);
 
+	ClassDB::bind_method(D_METHOD("set_light_texture_slice_counts", "counts"), &LightmapGIData::set_light_texture_slice_counts);
+	ClassDB::bind_method(D_METHOD("get_light_texture_slice_counts"), &LightmapGIData::get_light_texture_slice_counts);
+	ClassDB::bind_method(D_METHOD("set_light_texture_img_paths", "paths"), &LightmapGIData::set_light_texture_img_paths);
+	ClassDB::bind_method(D_METHOD("get_light_texture_img_paths"), &LightmapGIData::get_light_texture_img_paths);
+	ClassDB::bind_method(D_METHOD("set_shadowmask_texture_slice_counts", "counts"), &LightmapGIData::set_shadowmask_texture_slice_counts);
+	ClassDB::bind_method(D_METHOD("get_shadowmask_texture_slice_counts"), &LightmapGIData::get_shadowmask_texture_slice_counts);
+	ClassDB::bind_method(D_METHOD("set_shadowmask_texture_img_paths", "paths"), &LightmapGIData::set_shadowmask_texture_img_paths);
+	ClassDB::bind_method(D_METHOD("get_shadowmask_texture_img_paths"), &LightmapGIData::get_shadowmask_texture_img_paths);
+
 	ClassDB::bind_method(D_METHOD("set_uses_spherical_harmonics", "uses_spherical_harmonics"), &LightmapGIData::set_uses_spherical_harmonics);
 	ClassDB::bind_method(D_METHOD("is_using_spherical_harmonics"), &LightmapGIData::is_using_spherical_harmonics);
 
@@ -350,6 +449,12 @@ void LightmapGIData::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "lightmap_textures", PROPERTY_HINT_ARRAY_TYPE, "TextureLayered", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_READ_ONLY), "set_lightmap_textures", "get_lightmap_textures");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "shadowmask_textures", PROPERTY_HINT_ARRAY_TYPE, "TextureLayered", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_READ_ONLY), "set_shadowmask_textures", "get_shadowmask_textures");
+
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "light_texture_slice_counts", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_INTERNAL), "set_light_texture_slice_counts", "get_light_texture_slice_counts");
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "light_texture_img_paths", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_INTERNAL), "set_light_texture_img_paths", "get_light_texture_img_paths");
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "shadowmask_texture_slice_counts", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_INTERNAL), "set_shadowmask_texture_slice_counts", "get_shadowmask_texture_slice_counts");
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "shadowmask_texture_img_paths", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_INTERNAL), "set_shadowmask_texture_img_paths", "get_shadowmask_texture_img_paths");
+
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "uses_spherical_harmonics", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL), "set_uses_spherical_harmonics", "is_using_spherical_harmonics");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "user_data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL), "_set_user_data", "_get_user_data");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "probe_data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL), "_set_probe_data", "_get_probe_data");
@@ -817,7 +922,7 @@ void LightmapGI::_gen_new_positions_from_octree(const GenProbesOctree *p_cell, f
 	}
 }
 
-LightmapGI::BakeError LightmapGI::_save_and_reimport_atlas_textures(const Ref<Lightmapper> p_lightmapper, const String &p_base_name, TypedArray<TextureLayered> &r_textures, bool p_is_shadowmask) const {
+LightmapGI::BakeError LightmapGI::_save_and_reimport_atlas_textures(const Ref<Lightmapper> p_lightmapper, const String &p_base_name, TypedArray<TextureLayered> &r_textures, PackedStringArray &r_img_paths, PackedInt32Array &r_slice_counts, bool p_is_shadowmask) const {
 	Vector<Ref<Image>> images;
 	images.resize(p_is_shadowmask ? p_lightmapper->get_shadowmask_texture_count() : p_lightmapper->get_bake_texture_count());
 
@@ -834,6 +939,8 @@ LightmapGI::BakeError LightmapGI::_save_and_reimport_atlas_textures(const Ref<Li
 	const int last_count = slice_count % slices_per_texture;
 
 	r_textures.resize(texture_count);
+	r_img_paths.clear();
+	r_slice_counts.clear();
 
 	for (int i = 0; i < texture_count; i++) {
 		const int texture_slice_count = (i == texture_count - 1 && last_count != 0) ? last_count : slices_per_texture;
@@ -845,50 +952,83 @@ LightmapGI::BakeError LightmapGI::_save_and_reimport_atlas_textures(const Ref<Li
 		}
 
 		const String atlas_path = (texture_count > 1 ? p_base_name + "_" + itos(i) : p_base_name) + (p_is_shadowmask ? ".png" : ".exr");
-		const String config_path = atlas_path + ".import";
-
-		Ref<ConfigFile> config;
-		config.instantiate();
-
-		// Load an import configuration if present.
-		if (FileAccess::exists(config_path)) {
-			config->load(config_path);
-		}
-
-		config->set_value("remap", "importer", "2d_array_texture");
-		config->set_value("remap", "type", "CompressedTexture2DArray");
-		if (!config->has_section_key("params", "compress/mode")) {
-			// Do not override an existing compression mode.
-			config->set_value("params", "compress/mode", 2);
-		}
-		config->set_value("params", "compress/channel_pack", 1);
-		config->set_value("params", "mipmaps/generate", false);
-		config->set_value("params", "slices/horizontal", 1);
-		config->set_value("params", "slices/vertical", texture_slice_count);
-
-		config->save(config_path);
 
 		if (supersampling_enabled) {
 			texture_image->resize(texture_image->get_width() / supersampling_factor, texture_image->get_height() / supersampling_factor, Image::INTERPOLATE_TRILINEAR);
 		}
 
-		// Save the file.
-		Error save_err;
-		if (p_is_shadowmask) {
-			save_err = texture_image->save_png(atlas_path);
+		if (Engine::get_singleton()->is_editor_hint()) {
+			const String config_path = atlas_path + ".import";
+
+			Ref<ConfigFile> config;
+			config.instantiate();
+
+			// Load an import configuration if present.
+			if (FileAccess::exists(config_path)) {
+				config->load(config_path);
+			}
+
+			config->set_value("remap", "importer", "2d_array_texture");
+			config->set_value("remap", "type", "CompressedTexture2DArray");
+			if (!config->has_section_key("params", "compress/mode")) {
+				// Do not override an existing compression mode.
+				config->set_value("params", "compress/mode", 2);
+			}
+			config->set_value("params", "compress/channel_pack", 1);
+			config->set_value("params", "mipmaps/generate", false);
+			config->set_value("params", "slices/horizontal", 1);
+			config->set_value("params", "slices/vertical", texture_slice_count);
+
+			config->save(config_path);
+
+			// Save the file.
+			Error save_err;
+			if (p_is_shadowmask) {
+				save_err = texture_image->save_png(atlas_path);
+			} else {
+				save_err = texture_image->save_exr(atlas_path, false);
+			}
+
+			ERR_FAIL_COND_V(save_err, LightmapGI::BAKE_ERROR_CANT_CREATE_IMAGE);
+
+			// Reimport the file.
+			ResourceLoader::import(atlas_path);
+			Ref<TextureLayered> t = ResourceLoader::load(atlas_path); // If already loaded, it will be updated on refocus?
+			ERR_FAIL_COND_V(t.is_null(), LightmapGI::BAKE_ERROR_CANT_CREATE_IMAGE);
+
+			// Store the atlas in the array.
+			r_textures[i] = t;
 		} else {
-			save_err = texture_image->save_exr(atlas_path, false);
+			// Save the image file (EXR or PNG).
+			Error save_err;
+			if (p_is_shadowmask) {
+				save_err = texture_image->save_png(atlas_path);
+			} else {
+				save_err = texture_image->save_exr(atlas_path, false);
+			}
+
+			ERR_FAIL_COND_V(save_err, LightmapGI::BAKE_ERROR_CANT_CREATE_IMAGE);
+
+			r_img_paths.push_back(atlas_path);
+			r_slice_counts.push_back(texture_slice_count);
+
+			Ref<Image> loaded_image = Image::load_from_file(atlas_path);
+			ERR_FAIL_COND_V(loaded_image.is_null(), LightmapGI::BAKE_ERROR_CANT_CREATE_IMAGE);
+
+			const int loaded_slice_height = loaded_image->get_height() / texture_slice_count;
+			Vector<Ref<Image>> slice_images;
+			slice_images.resize(texture_slice_count);
+			for (int j = 0; j < texture_slice_count; j++) {
+				slice_images.set(i, loaded_image->get_region(Rect2i(0, loaded_slice_height * j, loaded_image->get_width(), loaded_slice_height)));
+			}
+
+			Ref<Texture2DArray> texs;
+			texs.instantiate();
+			texs->create_from_images(slice_images);
+			ERR_FAIL_COND_V(texs.is_null(), LightmapGI::BAKE_ERROR_CANT_CREATE_IMAGE);
+
+			r_textures[i] = texs;
 		}
-
-		ERR_FAIL_COND_V(save_err, LightmapGI::BAKE_ERROR_CANT_CREATE_IMAGE);
-
-		// Reimport the file.
-		ResourceLoader::import(atlas_path);
-		Ref<TextureLayered> t = ResourceLoader::load(atlas_path); // If already loaded, it will be updated on refocus?
-		ERR_FAIL_COND_V(t.is_null(), LightmapGI::BAKE_ERROR_CANT_CREATE_IMAGE);
-
-		// Store the atlas in the array.
-		r_textures[i] = t;
 	}
 
 	return LightmapGI::BAKE_ERROR_OK;
@@ -1293,18 +1433,22 @@ LightmapGI::BakeError LightmapGI::bake(Node *p_from_node, String p_image_data_pa
 	// POSTBAKE: Save Textures.
 	TypedArray<TextureLayered> lightmap_textures;
 	TypedArray<TextureLayered> shadowmask_textures;
+	PackedStringArray lightmap_img_paths;
+	PackedInt32Array lightmap_slice_counts;
+	PackedStringArray shadowmask_img_paths;
+	PackedInt32Array shadowmask_slice_counts;
 
 	const String texture_filename = p_image_data_path.get_basename();
 	const int shadowmask_texture_count = lightmapper->get_shadowmask_texture_count();
 	const bool save_shadowmask = shadowmask_mode != LightmapGIData::SHADOWMASK_MODE_NONE && shadowmask_texture_count > 0;
 
 	// Save the lightmap atlases.
-	BakeError save_err = _save_and_reimport_atlas_textures(lightmapper, texture_filename, lightmap_textures, false);
+	BakeError save_err = _save_and_reimport_atlas_textures(lightmapper, texture_filename, lightmap_textures, lightmap_img_paths, lightmap_slice_counts, false);
 	ERR_FAIL_COND_V(save_err != BAKE_ERROR_OK, save_err);
 
 	if (save_shadowmask) {
 		// Save the shadowmask atlases.
-		save_err = _save_and_reimport_atlas_textures(lightmapper, texture_filename + "_shadow", shadowmask_textures, true);
+		save_err = _save_and_reimport_atlas_textures(lightmapper, texture_filename + "_shadow", shadowmask_textures, shadowmask_img_paths, shadowmask_slice_counts, true);
 		ERR_FAIL_COND_V(save_err != BAKE_ERROR_OK, save_err);
 	}
 
@@ -1322,8 +1466,14 @@ LightmapGI::BakeError LightmapGI::bake(Node *p_from_node, String p_image_data_pa
 
 	gi_data->set_lightmap_textures(lightmap_textures);
 
+	// Store external image paths because ResourceLoader is not available when baking fromexported projects
+	gi_data->set_light_texture_slice_counts(lightmap_slice_counts);
+	gi_data->set_light_texture_img_paths(lightmap_img_paths);
+
 	if (save_shadowmask) {
 		gi_data->set_shadowmask_textures(shadowmask_textures);
+		gi_data->set_shadowmask_texture_slice_counts(shadowmask_slice_counts);
+		gi_data->set_shadowmask_texture_img_paths(shadowmask_img_paths);
 	} else {
 		gi_data->clear_shadowmask_textures();
 	}
