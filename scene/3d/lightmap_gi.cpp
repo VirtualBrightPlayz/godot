@@ -1019,7 +1019,7 @@ LightmapGI::BakeError LightmapGI::_save_and_reimport_atlas_textures(const Ref<Li
 			Vector<Ref<Image>> slice_images;
 			slice_images.resize(texture_slice_count);
 			for (int j = 0; j < texture_slice_count; j++) {
-				slice_images.set(i, loaded_image->get_region(Rect2i(0, loaded_slice_height * j, loaded_image->get_width(), loaded_slice_height)));
+				slice_images.set(j, loaded_image->get_region(Rect2i(0, loaded_slice_height * j, loaded_image->get_width(), loaded_slice_height)));
 			}
 
 			Ref<Texture2DArray> texs;
@@ -1464,16 +1464,21 @@ LightmapGI::BakeError LightmapGI::bake(Node *p_from_node, String p_image_data_pa
 		gi_data.instantiate();
 	}
 
-	gi_data->set_lightmap_textures(lightmap_textures);
-
-	// Store external image paths because ResourceLoader is not available when baking fromexported projects
-	gi_data->set_light_texture_slice_counts(lightmap_slice_counts);
-	gi_data->set_light_texture_img_paths(lightmap_img_paths);
+	if (Engine::get_singleton()->is_editor_hint()) {
+		gi_data->set_lightmap_textures(lightmap_textures);
+	} else {
+		// Store external image paths because ResourceLoader is not available when baking fromexported projects
+		gi_data->set_light_texture_slice_counts(lightmap_slice_counts);
+		gi_data->set_light_texture_img_paths(lightmap_img_paths);
+	}
 
 	if (save_shadowmask) {
-		gi_data->set_shadowmask_textures(shadowmask_textures);
-		gi_data->set_shadowmask_texture_slice_counts(shadowmask_slice_counts);
-		gi_data->set_shadowmask_texture_img_paths(shadowmask_img_paths);
+		if (Engine::get_singleton()->is_editor_hint()) {
+			gi_data->set_shadowmask_textures(shadowmask_textures);
+		} else {
+			gi_data->set_shadowmask_texture_slice_counts(shadowmask_slice_counts);
+			gi_data->set_shadowmask_texture_img_paths(shadowmask_img_paths);
+		}
 	} else {
 		gi_data->clear_shadowmask_textures();
 	}
