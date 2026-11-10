@@ -34,6 +34,7 @@
 #include "jolt_physics_server_3d.h"
 #include "jolt_project_settings.h"
 
+#include "core/object/class_db.h"
 #include "core/config/project_settings.h"
 #include "core/object/callable_mp.h"
 #include "servers/physics_3d/physics_server_3d_manager.h"
@@ -47,24 +48,25 @@ PhysicsServer3D *create_jolt_physics_server() {
 #endif
 
 	JoltPhysicsServer3D *physics_server = memnew(JoltPhysicsServer3D(run_on_separate_thread));
+	Engine::get_singleton()->add_singleton(Engine::Singleton("JoltPhysicsServer3D", JoltPhysicsServer3D::get_singleton()));
 
 	return memnew(PhysicsServer3DWrapMT(physics_server, run_on_separate_thread));
 }
 
 void initialize_jolt_physics_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SERVERS) {
-		return;
+	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
+		jolt_initialize();
+		PhysicsServer3DManager::get_singleton()->register_server(PhysicsServer3DManager::JOLT_PHYSICS_NAME, callable_mp_static(&create_jolt_physics_server));
+		JoltProjectSettings::register_settings();
+	} else if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
+		GDREGISTER_VIRTUAL_CLASS(JoltPhysicsServer3D);
 	}
-
-	jolt_initialize();
-	PhysicsServer3DManager::get_singleton()->register_server(PhysicsServer3DManager::JOLT_PHYSICS_NAME, callable_mp_static(&create_jolt_physics_server));
-	JoltProjectSettings::register_settings();
 }
 
 void uninitialize_jolt_physics_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SERVERS) {
-		return;
+		jolt_deinitialize();
+	} else if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
+		Engine::get_singleton()->remove_singleton("JoltPhysicsServer3D");
 	}
-
-	jolt_deinitialize();
 }

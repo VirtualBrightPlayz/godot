@@ -32,6 +32,7 @@
 
 #include "core/os/mutex.h"
 #include "core/templates/local_vector.h"
+#include "core/templates/a_hash_map.h"
 #include "core/templates/rid.h"
 #include "core/templates/self_list.h"
 #include "core/variant/variant.h"
@@ -46,6 +47,7 @@
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Constraints/Constraint.h>
 #include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/StateRecorderImpl.h>
 
 class JoltArea3D;
 class JoltBody3D;
@@ -80,6 +82,8 @@ class JoltSpace3D {
 	JPH::PhysicsSystem *physics_system = nullptr;
 	JoltPhysicsDirectSpaceState3D *direct_state = nullptr;
 	JoltArea3D *default_area = nullptr;
+	AHashMap<int64_t, JPH::StateRecorder *> recorded_states;
+	PackedInt64Array recorded_state_ticks;
 
 	float last_step = 0.0f;
 
@@ -94,6 +98,14 @@ class JoltSpace3D {
 public:
 	explicit JoltSpace3D(JPH::JobSystem *p_job_system, JPH::TempAllocator *p_temp_allocator);
 	~JoltSpace3D();
+
+	bool restore_state(int64_t p_tick);
+	void save_state(int64_t p_tick);
+	void forget_state(int64_t p_tick);
+	bool has_state(int64_t p_tick) const;
+	PackedInt64Array get_states() const;
+	PackedByteArray get_state(int64_t p_tick) const;
+	void set_state(int64_t p_tick, const PackedByteArray &p_data);
 
 	void step(float p_step);
 

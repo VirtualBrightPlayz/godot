@@ -63,6 +63,67 @@ constexpr double SPACE_DEFAULT_SOLVER_ITERATIONS = 8;
 
 } // namespace
 
+bool JoltSpace3D::restore_state(int64_t p_tick) {
+	ERR_FAIL_COND_V(!recorded_states.has(p_tick), false);
+	ERR_FAIL_COND_V(!recorded_state_ticks.has(p_tick), false);
+	ERR_FAIL_NULL_V(recorded_states.get(p_tick), false);
+
+	JPH::StateRecorderImpl *recorded = (JPH::StateRecorderImpl *)recorded_states.get(p_tick);
+	recorded->Rewind();
+	return physics_system->RestoreState(*recorded);
+}
+
+void JoltSpace3D::save_state(int64_t p_tick) {
+	ERR_FAIL_COND(recorded_states.has(p_tick));
+	ERR_FAIL_COND(recorded_state_ticks.has(p_tick));
+
+	recorded_states.insert(p_tick, memnew(JPH::StateRecorderImpl()));
+	recorded_state_ticks.append(p_tick);
+	physics_system->SaveState(*recorded_states.get(p_tick));
+}
+
+void JoltSpace3D::forget_state(int64_t p_tick) {
+	ERR_FAIL_COND(!recorded_states.has(p_tick));
+	ERR_FAIL_COND(!recorded_state_ticks.has(p_tick));
+	ERR_FAIL_NULL(recorded_states.get(p_tick));
+
+	memdelete(recorded_states.get(p_tick));
+	recorded_states.erase(p_tick);
+	recorded_state_ticks.erase(p_tick);
+}
+
+bool JoltSpace3D::has_state(int64_t p_tick) const {
+	return recorded_states.has(p_tick);
+}
+
+PackedInt64Array JoltSpace3D::get_states() const {
+	return recorded_state_ticks;
+}
+
+PackedByteArray JoltSpace3D::get_state(int64_t p_tick) const {
+	ERR_FAIL_COND_V(!recorded_states.has(p_tick), PackedByteArray());
+	ERR_FAIL_COND_V(!recorded_state_ticks.has(p_tick), PackedByteArray());
+	ERR_FAIL_NULL_V(recorded_states.get(p_tick), PackedByteArray());
+
+	JPH::StateRecorderImpl *recorded = (JPH::StateRecorderImpl *)recorded_states.get(p_tick);
+	recorded->Rewind();
+	size_t length = recorded->GetDataSize();
+	PackedByteArray data = PackedByteArray();
+	data.resize(length);
+	recorded->ReadBytes(data.ptrw(), length);
+	return data;
+}
+
+void JoltSpace3D::set_state(int64_t p_tick, const PackedByteArray &p_data) {
+	ERR_FAIL_COND(!recorded_states.has(p_tick));
+	ERR_FAIL_COND(!recorded_state_ticks.has(p_tick));
+	ERR_FAIL_NULL(recorded_states.get(p_tick));
+
+	JPH::StateRecorderImpl *recorded = (JPH::StateRecorderImpl *)recorded_states.get(p_tick);
+	recorded->Clear();
+	recorded->WriteBytes(p_data.ptr(), p_data.size());
+}
+
 void JoltSpace3D::_pre_step(float p_step) {
 	flush_pending_objects();
 
@@ -158,6 +219,15 @@ JoltSpace3D::JoltSpace3D(JPH::JobSystem *p_job_system, JPH::TempAllocator *p_tem
 }
 
 JoltSpace3D::~JoltSpace3D() {
+	for (int64_t i = 0; i < recorded_state_ticks.size(); i++) {
+		JPH::StateRecorder *state = recorded_states.get(recorded_state_ticks[i]);
+		if (state) {
+			memdelete(state);
+		}
+		recorded_states.erase(recorded_state_ticks[i]);
+	}
+	recorded_state_ticks.clear();
+
 	if (direct_state != nullptr) {
 		memdelete(direct_state);
 		direct_state = nullptr;

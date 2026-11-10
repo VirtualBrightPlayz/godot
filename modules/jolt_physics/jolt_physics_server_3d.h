@@ -42,7 +42,7 @@ class JoltSoftBody3D;
 class JoltSpace3D;
 class JoltTempAllocator;
 
-class JoltPhysicsServer3D final : public PhysicsServer3D {
+class JoltPhysicsServer3D : public PhysicsServer3D {
 	GDCLASS(JoltPhysicsServer3D, PhysicsServer3D)
 
 	inline static JoltPhysicsServer3D *singleton = nullptr;
@@ -116,14 +116,26 @@ public:
 		G6DOF_JOINT_FLAG_ENABLE_ANGULAR_SPRING_FREQUENCY,
 	};
 
-private:
-	static void _bind_methods() {}
+protected:
+	static void _bind_methods();
 
 public:
+	JoltPhysicsServer3D();
 	explicit JoltPhysicsServer3D(bool p_on_separate_thread);
 	~JoltPhysicsServer3D();
 
 	static JoltPhysicsServer3D *get_singleton() { return singleton; }
+
+	bool restore_state(RID p_space, int64_t p_tick) const;
+	void save_state(RID p_space, int64_t p_tick) const;
+	void forget_state(RID p_space, int64_t p_tick) const;
+	bool has_state(RID p_space, int64_t p_tick) const;
+	PackedInt64Array get_states(RID p_space) const;
+	PackedByteArray get_state(RID p_space, int64_t p_tick) const;
+	void set_state(RID p_space, int64_t p_tick, const PackedByteArray &p_data);
+
+	bool body_restore_state(RID p_body, const PackedByteArray &p_data);
+	PackedByteArray body_save_state(RID p_body) const;
 
 	virtual RID world_boundary_shape_create() override;
 	virtual RID separation_ray_shape_create() override;

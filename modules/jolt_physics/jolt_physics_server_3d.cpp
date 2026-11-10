@@ -30,6 +30,8 @@
 
 #include "jolt_physics_server_3d.h"
 
+#include "core/object/class_db.h"
+
 #include "joints/jolt_cone_twist_joint_3d.h"
 #include "joints/jolt_generic_6dof_joint_3d.h"
 #include "joints/jolt_hinge_joint_3d.h"
@@ -62,6 +64,108 @@ JoltPhysicsServer3D::~JoltPhysicsServer3D() {
 	if (singleton == this) {
 		singleton = nullptr;
 	}
+}
+
+JoltPhysicsServer3D::JoltPhysicsServer3D() {
+}
+
+void JoltPhysicsServer3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("restore_state", "space", "tick"), &JoltPhysicsServer3D::restore_state);
+	ClassDB::bind_method(D_METHOD("save_state", "space", "tick"), &JoltPhysicsServer3D::save_state);
+	ClassDB::bind_method(D_METHOD("forget_state", "space", "tick"), &JoltPhysicsServer3D::forget_state);
+	ClassDB::bind_method(D_METHOD("has_state", "space", "tick"), &JoltPhysicsServer3D::has_state);
+	ClassDB::bind_method(D_METHOD("get_states", "space"), &JoltPhysicsServer3D::get_states);
+	ClassDB::bind_method(D_METHOD("get_state", "space", "tick"), &JoltPhysicsServer3D::get_state);
+	ClassDB::bind_method(D_METHOD("set_state", "space", "tick", "data"), &JoltPhysicsServer3D::set_state);
+	ClassDB::bind_method(D_METHOD("body_restore_state", "body" "data"), &JoltPhysicsServer3D::body_restore_state);
+	ClassDB::bind_method(D_METHOD("body_save_state", "body"), &JoltPhysicsServer3D::body_save_state);
+}
+
+bool JoltPhysicsServer3D::restore_state(RID p_space, int64_t p_tick) const {
+	JoltSpace3D *space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL_V(space, false);
+
+	return space->restore_state(p_tick);
+}
+
+void JoltPhysicsServer3D::save_state(RID p_space, int64_t p_tick) const {
+	JoltSpace3D *space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL(space);
+
+	space->save_state(p_tick);
+}
+
+void JoltPhysicsServer3D::forget_state(RID p_space, int64_t p_tick) const {
+	JoltSpace3D *space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL(space);
+
+	space->forget_state(p_tick);
+}
+
+bool JoltPhysicsServer3D::has_state(RID p_space, int64_t p_tick) const {
+	JoltSpace3D *space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL_V(space, false);
+
+	return space->has_state(p_tick);
+}
+
+PackedInt64Array JoltPhysicsServer3D::get_states(RID p_space) const {
+	JoltSpace3D *space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL_V(space, PackedInt64Array());
+
+	return space->get_states();
+}
+
+PackedByteArray JoltPhysicsServer3D::get_state(RID p_space, int64_t p_tick) const {
+	JoltSpace3D *space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL_V(space, PackedByteArray());
+
+	return space->get_state(p_tick);
+}
+
+void JoltPhysicsServer3D::set_state(RID p_space, int64_t p_tick, const PackedByteArray &p_data) {
+	JoltSpace3D *space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL(space);
+
+	space->set_state(p_tick, p_data);
+}
+
+bool JoltPhysicsServer3D::body_restore_state(RID p_body, const PackedByteArray &p_data) {
+	JoltBody3D *body = body_owner.get_or_null(p_body);
+	ERR_FAIL_NULL_V(body, false);
+
+	JPH::Body *jolt_body = body->get_jolt_body();
+	ERR_FAIL_NULL_V(jolt_body, false);
+
+	const JoltSpace3D *space = body->get_space();
+	ERR_FAIL_NULL_V(space, false);
+
+	JPH::StateRecorderImpl recorder;
+	recorder.WriteBytes(p_data.ptr(), p_data.size());
+	recorder.Rewind();
+	space->get_physics_system().RestoreBodyState(*jolt_body, recorder);
+	return true;
+}
+
+PackedByteArray JoltPhysicsServer3D::body_save_state(RID p_body) const {
+	JoltBody3D *body = body_owner.get_or_null(p_body);
+	ERR_FAIL_NULL_V(body, PackedByteArray());
+
+	const JPH::Body *jolt_body = body->get_jolt_body();
+	ERR_FAIL_NULL_V(jolt_body, PackedByteArray());
+
+	const JoltSpace3D *space = body->get_space();
+	ERR_FAIL_NULL_V(space, PackedByteArray());
+
+	JPH::StateRecorderImpl recorder;
+	space->get_physics_system().SaveBodyState(*jolt_body, recorder);
+
+	recorder.Rewind();
+	size_t length = recorder.GetDataSize();
+	PackedByteArray data = PackedByteArray();
+	data.resize(length);
+	recorder.ReadBytes(data.ptrw(), length);
+	return data;
 }
 
 RID JoltPhysicsServer3D::world_boundary_shape_create() {
