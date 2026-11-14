@@ -82,8 +82,6 @@ class JoltSpace3D {
 	JPH::PhysicsSystem *physics_system = nullptr;
 	JoltPhysicsDirectSpaceState3D *direct_state = nullptr;
 	JoltArea3D *default_area = nullptr;
-	AHashMap<int64_t, JPH::StateRecorder *> recorded_states;
-	PackedInt64Array recorded_state_ticks;
 
 	float last_step = 0.0f;
 
@@ -99,13 +97,8 @@ public:
 	explicit JoltSpace3D(JPH::JobSystem *p_job_system, JPH::TempAllocator *p_temp_allocator);
 	~JoltSpace3D();
 
-	bool restore_state(int64_t p_tick);
-	void save_state(int64_t p_tick);
-	void forget_state(int64_t p_tick);
-	bool has_state(int64_t p_tick) const;
-	PackedInt64Array get_states() const;
-	PackedByteArray get_state(int64_t p_tick) const;
-	void set_state(int64_t p_tick, const PackedByteArray &p_data);
+	PackedByteArray get_state() const;
+	bool set_state(PackedByteArray p_data);
 
 	void step(float p_step);
 
@@ -153,6 +146,7 @@ public:
 
 	float get_last_step() const { return last_step; }
 
+	JPH::Body *add_object_with_id(const JoltObject3D &p_object, const JPH::BodyID &p_id, const JPH::BodyCreationSettings &p_settings, bool p_sleeping = false);
 	JPH::Body *add_object(const JoltObject3D &p_object, const JPH::BodyCreationSettings &p_settings, bool p_sleeping = false);
 	JPH::Body *add_object(const JoltObject3D &p_object, const JPH::SoftBodyCreationSettings &p_settings, bool p_sleeping = false);
 	void remove_object(const JPH::BodyID &p_jolt_id);

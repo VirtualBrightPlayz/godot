@@ -74,6 +74,18 @@ JoltObject3D::JoltObject3D(ObjectType p_object_type) :
 
 JoltObject3D::~JoltObject3D() = default;
 
+bool JoltObject3D::set_jolt_id(const JPH::BodyID &p_id) {
+	ERR_FAIL_NULL_V(space, false);
+	_space_changing();
+	_remove_from_space();
+	bool ret = _add_to_space_with_id(p_id);
+	if (!ret) {
+		_add_to_space();
+	}
+	_space_changed();
+	return ret;
+}
+
 void JoltObject3D::set_space(JoltSpace3D *p_space) {
 	if (space == p_space) {
 		return;

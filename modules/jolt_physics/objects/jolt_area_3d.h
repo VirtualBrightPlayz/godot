@@ -130,6 +130,7 @@ private:
 	bool _should_sleep() const { return !is_monitoring(); }
 
 	virtual void _add_to_space() override;
+	virtual bool _add_to_space_with_id(const JPH::BodyID &p_id) override;
 
 	void _enqueue_call_queries();
 	void _dequeue_call_queries();

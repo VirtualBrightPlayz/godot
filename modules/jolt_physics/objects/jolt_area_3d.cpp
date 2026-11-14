@@ -85,6 +85,39 @@ void JoltArea3D::_add_to_space() {
 	jolt_settings = nullptr;
 }
 
+bool JoltArea3D::_add_to_space_with_id(const JPH::BodyID &p_id) {
+	jolt_shape = build_shapes(true);
+
+	JPH::CollisionGroup::GroupID group_id = 0;
+	JPH::CollisionGroup::SubGroupID sub_group_id = 0;
+	JoltGroupFilter::encode_object(this, group_id, sub_group_id);
+
+	jolt_settings->mUserData = reinterpret_cast<JPH::uint64>(this);
+	jolt_settings->mObjectLayer = _get_object_layer();
+	jolt_settings->mCollisionGroup = JPH::CollisionGroup(nullptr, group_id, sub_group_id);
+	jolt_settings->mMotionType = _get_motion_type();
+	jolt_settings->mIsSensor = true;
+	jolt_settings->mCollideKinematicVsNonDynamic = true;
+	jolt_settings->mUseManifoldReduction = false;
+	jolt_settings->mOverrideMassProperties = JPH::EOverrideMassProperties::MassAndInertiaProvided;
+	jolt_settings->mMassPropertiesOverride.mMass = 1.0f;
+	jolt_settings->mMassPropertiesOverride.mInertia = JPH::Mat44::sIdentity();
+
+	jolt_settings->SetShape(jolt_shape);
+
+	JPH::Body *new_jolt_body = space->add_object_with_id(*this, p_id, *jolt_settings, _should_sleep());
+	if (new_jolt_body == nullptr) {
+		return false;
+	}
+
+	jolt_body = new_jolt_body;
+
+	delete jolt_settings;
+	jolt_settings = nullptr;
+
+	return true;
+}
+
 void JoltArea3D::_enqueue_call_queries() {
 	if (space != nullptr) {
 		space->enqueue_call_queries(&call_queries_element);

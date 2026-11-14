@@ -64,6 +64,7 @@ protected:
 	ObjectID instance_id;
 	JoltSpace3D *space = nullptr;
 	JPH::Body *jolt_body = nullptr;
+	bool can_save_body = false;
 
 	uint32_t collision_layer = 1;
 	uint32_t collision_mask = 1;
@@ -76,6 +77,7 @@ protected:
 	virtual JPH::ObjectLayer _get_object_layer() const = 0;
 
 	virtual void _add_to_space() = 0;
+	virtual bool _add_to_space_with_id(const JPH::BodyID &p_id) = 0;
 	virtual void _remove_from_space();
 
 	void _reset_space();
@@ -119,6 +121,7 @@ public:
 
 	JPH::Body *get_jolt_body() const { return jolt_body; }
 	JPH::BodyID get_jolt_id() const { return jolt_body->GetID(); }
+	bool set_jolt_id(const JPH::BodyID &p_id);
 
 	JoltSpace3D *get_space() const { return space; }
 	void set_space(JoltSpace3D *p_space);
@@ -129,6 +132,9 @@ public:
 
 	uint32_t get_collision_mask() const { return collision_mask; }
 	void set_collision_mask(uint32_t p_mask);
+
+	bool get_can_save() const { return can_save_body; }
+	void set_can_save(bool p_can_save) { can_save_body = p_can_save; }
 
 	virtual Vector3 get_velocity_at_position(const Vector3 &p_position) const = 0;
 

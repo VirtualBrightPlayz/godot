@@ -112,6 +112,7 @@ private:
 	virtual JPH::EMotionType _get_motion_type() const override;
 
 	virtual void _add_to_space() override;
+	virtual bool _add_to_space_with_id(const JPH::BodyID &p_id) override;
 
 	bool _should_call_queries() const { return !state_sync_callback.is_null() || !custom_integration_callback.is_null(); }
 	void _enqueue_call_queries();

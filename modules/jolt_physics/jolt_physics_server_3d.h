@@ -126,15 +126,14 @@ public:
 
 	static JoltPhysicsServer3D *get_singleton() { return singleton; }
 
-	bool restore_state(RID p_space, int64_t p_tick) const;
-	void save_state(RID p_space, int64_t p_tick) const;
-	void forget_state(RID p_space, int64_t p_tick) const;
-	bool has_state(RID p_space, int64_t p_tick) const;
-	PackedInt64Array get_states(RID p_space) const;
-	PackedByteArray get_state(RID p_space, int64_t p_tick) const;
-	void set_state(RID p_space, int64_t p_tick, const PackedByteArray &p_data);
+	PackedByteArray get_state(RID p_space) const;
+	bool set_state(RID p_space, PackedByteArray p_data);
+	uint32_t get_body_id(RID p_body);
+	bool set_body_id(RID p_body, uint32_t p_body_id);
+	bool body_get_can_save(RID p_body);
+	void body_set_can_save(RID p_body, bool p_can_save);
 
-	bool body_restore_state(RID p_body, const PackedByteArray &p_data);
+	bool body_restore_state(RID p_body, PackedByteArray p_data);
 	PackedByteArray body_save_state(RID p_body) const;
 
 	virtual RID world_boundary_shape_create() override;

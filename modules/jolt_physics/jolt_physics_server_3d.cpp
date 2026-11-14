@@ -70,67 +70,63 @@ JoltPhysicsServer3D::JoltPhysicsServer3D() {
 }
 
 void JoltPhysicsServer3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("restore_state", "space", "tick"), &JoltPhysicsServer3D::restore_state);
-	ClassDB::bind_method(D_METHOD("save_state", "space", "tick"), &JoltPhysicsServer3D::save_state);
-	ClassDB::bind_method(D_METHOD("forget_state", "space", "tick"), &JoltPhysicsServer3D::forget_state);
-	ClassDB::bind_method(D_METHOD("has_state", "space", "tick"), &JoltPhysicsServer3D::has_state);
-	ClassDB::bind_method(D_METHOD("get_states", "space"), &JoltPhysicsServer3D::get_states);
-	ClassDB::bind_method(D_METHOD("get_state", "space", "tick"), &JoltPhysicsServer3D::get_state);
-	ClassDB::bind_method(D_METHOD("set_state", "space", "tick", "data"), &JoltPhysicsServer3D::set_state);
-	ClassDB::bind_method(D_METHOD("body_restore_state", "body" "data"), &JoltPhysicsServer3D::body_restore_state);
+	ClassDB::bind_method(D_METHOD("get_state", "space"), &JoltPhysicsServer3D::get_state);
+	ClassDB::bind_method(D_METHOD("set_state", "space", "data"), &JoltPhysicsServer3D::set_state);
+	ClassDB::bind_method(D_METHOD("get_body_id", "body"), &JoltPhysicsServer3D::get_body_id);
+	ClassDB::bind_method(D_METHOD("set_body_id", "body", "id"), &JoltPhysicsServer3D::set_body_id);
+	ClassDB::bind_method(D_METHOD("body_get_can_save", "body"), &JoltPhysicsServer3D::body_get_can_save);
+	ClassDB::bind_method(D_METHOD("body_set_can_save", "body", "can_save"), &JoltPhysicsServer3D::body_set_can_save);
+	ClassDB::bind_method(D_METHOD("body_restore_state", "body", "data"), &JoltPhysicsServer3D::body_restore_state);
 	ClassDB::bind_method(D_METHOD("body_save_state", "body"), &JoltPhysicsServer3D::body_save_state);
 }
 
-bool JoltPhysicsServer3D::restore_state(RID p_space, int64_t p_tick) const {
-	JoltSpace3D *space = space_owner.get_or_null(p_space);
-	ERR_FAIL_NULL_V(space, false);
-
-	return space->restore_state(p_tick);
-}
-
-void JoltPhysicsServer3D::save_state(RID p_space, int64_t p_tick) const {
-	JoltSpace3D *space = space_owner.get_or_null(p_space);
-	ERR_FAIL_NULL(space);
-
-	space->save_state(p_tick);
-}
-
-void JoltPhysicsServer3D::forget_state(RID p_space, int64_t p_tick) const {
-	JoltSpace3D *space = space_owner.get_or_null(p_space);
-	ERR_FAIL_NULL(space);
-
-	space->forget_state(p_tick);
-}
-
-bool JoltPhysicsServer3D::has_state(RID p_space, int64_t p_tick) const {
-	JoltSpace3D *space = space_owner.get_or_null(p_space);
-	ERR_FAIL_NULL_V(space, false);
-
-	return space->has_state(p_tick);
-}
-
-PackedInt64Array JoltPhysicsServer3D::get_states(RID p_space) const {
-	JoltSpace3D *space = space_owner.get_or_null(p_space);
-	ERR_FAIL_NULL_V(space, PackedInt64Array());
-
-	return space->get_states();
-}
-
-PackedByteArray JoltPhysicsServer3D::get_state(RID p_space, int64_t p_tick) const {
+PackedByteArray JoltPhysicsServer3D::get_state(RID p_space) const {
 	JoltSpace3D *space = space_owner.get_or_null(p_space);
 	ERR_FAIL_NULL_V(space, PackedByteArray());
 
-	return space->get_state(p_tick);
+	return space->get_state();
 }
 
-void JoltPhysicsServer3D::set_state(RID p_space, int64_t p_tick, const PackedByteArray &p_data) {
+bool JoltPhysicsServer3D::set_state(RID p_space, PackedByteArray p_data) {
 	JoltSpace3D *space = space_owner.get_or_null(p_space);
-	ERR_FAIL_NULL(space);
+	ERR_FAIL_NULL_V(space, false);
 
-	space->set_state(p_tick, p_data);
+	return space->set_state(p_data);
 }
 
-bool JoltPhysicsServer3D::body_restore_state(RID p_body, const PackedByteArray &p_data) {
+uint32_t JoltPhysicsServer3D::get_body_id(RID p_body) {
+	JoltBody3D *body = body_owner.get_or_null(p_body);
+	ERR_FAIL_NULL_V(body, 0);
+	ERR_FAIL_NULL_V(body->get_space(), 0);
+
+	JPH::BodyID jolt_body_id = body->get_jolt_id();
+	return jolt_body_id.GetIndex();
+}
+
+bool JoltPhysicsServer3D::set_body_id(RID p_body, uint32_t p_body_id) {
+	JoltBody3D *body = body_owner.get_or_null(p_body);
+	ERR_FAIL_NULL_V(body, false);
+	ERR_FAIL_NULL_V(body->get_space(), false);
+
+	JPH::BodyID new_id(p_body_id, 0);
+	return body->set_jolt_id(new_id);
+}
+
+bool JoltPhysicsServer3D::body_get_can_save(RID p_body) {
+	JoltBody3D *body = body_owner.get_or_null(p_body);
+	ERR_FAIL_NULL_V(body, false);
+
+	return body->get_can_save();
+}
+
+void JoltPhysicsServer3D::body_set_can_save(RID p_body, bool p_can_save) {
+	JoltBody3D *body = body_owner.get_or_null(p_body);
+	ERR_FAIL_NULL(body);
+
+	body->set_can_save(p_can_save);
+}
+
+bool JoltPhysicsServer3D::body_restore_state(RID p_body, PackedByteArray p_data) {
 	JoltBody3D *body = body_owner.get_or_null(p_body);
 	ERR_FAIL_NULL_V(body, false);
 

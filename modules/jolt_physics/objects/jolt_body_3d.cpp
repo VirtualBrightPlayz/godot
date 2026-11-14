@@ -130,6 +130,49 @@ void JoltBody3D::_add_to_space() {
 	jolt_settings = nullptr;
 }
 
+bool JoltBody3D::_add_to_space_with_id(const JPH::BodyID &p_id) {
+	jolt_shape = build_shapes(true);
+
+	JPH::CollisionGroup::GroupID group_id = 0;
+	JPH::CollisionGroup::SubGroupID sub_group_id = 0;
+	JoltGroupFilter::encode_object(this, group_id, sub_group_id);
+
+	jolt_settings->mUserData = reinterpret_cast<JPH::uint64>(this);
+	jolt_settings->mObjectLayer = _get_object_layer();
+	jolt_settings->mCollisionGroup = JPH::CollisionGroup(nullptr, group_id, sub_group_id);
+	jolt_settings->mMotionType = _get_motion_type();
+	jolt_settings->mAllowedDOFs = _calculate_allowed_dofs();
+	jolt_settings->mAllowDynamicOrKinematic = true;
+	jolt_settings->mCollideKinematicVsNonDynamic = reports_all_kinematic_contacts();
+	jolt_settings->mUseManifoldReduction = !reports_contacts();
+	jolt_settings->mAllowSleeping = is_sleep_actually_allowed();
+	jolt_settings->mLinearDamping = 0.0f;
+	jolt_settings->mAngularDamping = 0.0f;
+	jolt_settings->mMaxLinearVelocity = JoltProjectSettings::max_linear_velocity;
+	jolt_settings->mMaxAngularVelocity = JoltProjectSettings::max_angular_velocity;
+
+	if (JoltProjectSettings::use_enhanced_internal_edge_removal_for_bodies) {
+		jolt_settings->mEnhancedInternalEdgeRemoval = true;
+	}
+
+	jolt_settings->mOverrideMassProperties = JPH::EOverrideMassProperties::MassAndInertiaProvided;
+	jolt_settings->mMassPropertiesOverride = _calculate_mass_properties();
+
+	jolt_settings->SetShape(jolt_shape);
+
+	JPH::Body *new_jolt_body = space->add_object_with_id(*this, p_id, *jolt_settings, sleep_initially);
+	if (new_jolt_body == nullptr) {
+		return false;
+	}
+
+	jolt_body = new_jolt_body;
+
+	delete jolt_settings;
+	jolt_settings = nullptr;
+
+	return true;
+}
+
 void JoltBody3D::_enqueue_call_queries() {
 	// This method will be called from the body activation listener on multiple threads during the simulation step.
 

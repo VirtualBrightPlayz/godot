@@ -70,6 +70,7 @@ class JoltSoftBody3D final : public JoltObject3D {
 	virtual void _space_changed() override;
 
 	virtual void _add_to_space() override;
+	virtual bool _add_to_space_with_id(const JPH::BodyID &p_id) override;
 
 	JPH::SoftBodySharedSettings *_create_shared_settings();
 
